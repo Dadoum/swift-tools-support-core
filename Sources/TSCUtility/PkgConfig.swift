@@ -115,6 +115,8 @@ public class LoadingContext {
 
 /// Information on an individual `pkg-config` supported package.
 public struct PkgConfig {
+    public static var pkgConfigCache: [String: PkgConfig] = [String: PkgConfig]()
+
     /// The name of the package.
     public let name: String
 
@@ -179,18 +181,23 @@ public struct PkgConfig {
                     continue
                 }
 
-                // FIXME: This is wasteful, we should be caching the PkgConfig result.
-                let pkg = try PkgConfig(
-                    name: dep,
-                    additionalSearchPaths: additionalSearchPaths,
-                    diagnostics: diagnostics,
-                    fileSystem: fileSystem,
-                    brewPrefix: brewPrefix,
-                    loadingContext: loadingContext
-                )
+                if !PkgConfig.pkgConfigCache.keys.contains(dep) {
+                    PkgConfig.pkgConfigCache[dep] = try PkgConfig(
+                        name: dep,
+                        additionalSearchPaths: additionalSearchPaths,
+                        diagnostics: diagnostics,
+                        fileSystem: fileSystem,
+                        brewPrefix: brewPrefix,
+                        loadingContext: loadingContext
+                    )
+                }
 
-                cFlags += pkg.cFlags
-                libs += pkg.libs
+                guard let cachedPkg = PkgConfig.pkgConfigCache[dep] else {
+                    fatalError("Cannot retrieve cached pkgConfig result")
+                }
+
+                cFlags += cachedPkg.cFlags
+                libs += cachedPkg.libs
             }
 
             return (cFlags: cFlags, libs: libs)
